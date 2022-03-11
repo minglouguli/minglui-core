@@ -53,13 +53,23 @@ class Go {
             __urls[item.key] = { url: item.value, group: url };
           }
         }
+      } else if (typeof key === 'object') {
+        for (const itemKey in key) {
+          if (Object.hasOwnProperty.call(key, itemKey)) {
+            const item = key[itemKey];
+            let kname = itemKey;
+            if (kname[0] != '@') {
+              kname = '@' + kname;
+            }
+            __urls[kname] = { url: item, group: url };
+          }
+        }
       } else {
         if (key[0] != '@') {
           key = '@' + key;
         }
         __urls[key] = { url: url, group: group };
       }
-
       return this._httpConfig;
     },
     event: {

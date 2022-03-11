@@ -22,6 +22,9 @@ class MlR {
   render(template, data) {
     return this.mlREngine.render(template, data);
   }
+  newRender(template, data) {
+    return this.mlREngine.newRender(template, data);
+  }
 }
 
 MlR.__global__ = {
@@ -32,24 +35,29 @@ MlR.__global__ = {
   }
 };
 
-MlR.filter = function(filterName, handler) {
+MlR.filter = function (filterName, handler) {
   MlR.__global__.filters[filterName] = handler;
 };
 
-MlR.new = function(options) {
+MlR.new = function (options) {
   return new MlR(options);
 };
 
 class MlREngine {
   #options = {
     openTag: '{{',
-    closeTag: '}}'
+    closeTag: '}}',
+    newLine: '\n',
+    for: '@for',
+    if: '@if',
+    elseIf: '@else if',
+    else: '@else'
   };
   #filters = {};
   #mlr = null;
   constructor(mlr, config) {
     this.#mlr = mlr;
-    this.#options = config.options;
+    this.#options = { ...{}, ...this.#options, ...config.options };
     this.#filters = config.filters;
   }
 
@@ -79,9 +87,157 @@ class MlREngine {
     });
     return result;
   }
+  newRender(template, data) {
+    return this.templateExpressionAnalysis(template, data);
+  }
+  templateExpressionAnalysis(template, data) {
+    //模板环境，用于处理嵌套模板
+    let templateScopeEnv = {
+      runIf: false,
+      ifPass: false
+    };
+    let result = '';
+    if (!template) {
+      return result;
+    }
+    let scopeData = data || {};
+
+    let blockExpressionArr = [];
+
+    let deep = 0;
+    let findFlag = false;
+    let openTagIndex = 0;
+    let closeTagIndex = 0 - this.#options.closeTag.length;
+    for (let i = 0; i < template.length; i++) {
+      const openTag = template.substring(i, i + this.#options.openTag.length);
+      if (openTag == this.#options.openTag) {
+        if (deep == 0) {
+          openTagIndex = i;
+          result += template.substring(
+            closeTagIndex + this.#options.closeTag.length,
+            i
+          );
+        }
+        findFlag = true;
+        deep++;
+      }
+      const closeTag = template.substring(i, i + this.#options.closeTag.length);
+      if (closeTag == this.#options.closeTag) {
+        deep--;
+      }
+      if (findFlag && deep == 0) {
+        //找到了结束标志
+        closeTagIndex = i;
+        findFlag = false;
+        result += this.blockExpressionAnalysis(
+          template.substring(
+            openTagIndex + this.#options.openTag.length,
+            closeTagIndex
+          ),
+          scopeData,
+          templateScopeEnv
+        );
+      }
+    }
+    result += template.substring(closeTagIndex + this.#options.closeTag.length);
+    return result;
+  }
   textAnalysis(text) {
     return text;
   }
+  blockExpressionAnalysis(blockExpression, scopeData, templateScopeEnv) {
+    if (blockExpression.startsWith(this.#options.for)) {
+      let result = '';
+      let newLineIndex = blockExpression.indexOf(this.#options.newLine);
+      if (newLineIndex) {
+        let forExpression = blockExpression
+          .substring(this.#options.for.length + 1, newLineIndex)
+          .trim();
+        let forTemplate = blockExpression.substring(newLineIndex + 1);
+
+        let listName = 'list';
+        let itemName = '';
+        let itemIndexName = '';
+        let arr = forExpression.split(' in ');
+
+        listName = arr[1].trim();
+        let iarr = arr[0].trim().split(',');
+        itemName = iarr[0].trim().replace('(', '').replace(')', '');
+        if (iarr.length > 1) {
+          itemIndexName = iarr[1].trim().replace(')', '');
+        }
+        let list = scopeData[listName];
+
+        for (let index = 0; index < list.length; index++) {
+          const item = list[index];
+          let itemData = {};
+          itemName && (itemData[itemName] = item);
+          itemIndexName && (itemData[itemIndexName] = index);
+          result += this.templateExpressionAnalysis(forTemplate, {
+            ...scopeData,
+            ...itemData
+          });
+          if (index < list.length - 1) {
+            result += this.#options.newLine;
+          }
+        }
+
+        return result;
+      }
+      return result;
+    } else if (blockExpression.startsWith(this.#options.if)) {
+      let result = '';
+      let newLineIndex = blockExpression.indexOf(this.#options.newLine);
+      if (newLineIndex) {
+        let ifExpression = blockExpression
+          .substring(this.#options.if.length + 1, newLineIndex)
+          .trim();
+        let operateResult = this.operationExpressionAnalysis(
+          ifExpression,
+          scopeData
+        );
+        if (operateResult) {
+          templateScopeEnv.ifPass = true;
+          let ifTemplate = blockExpression.substring(newLineIndex + 1);
+          result += this.templateExpressionAnalysis(ifTemplate, scopeData);
+        } else {
+          templateScopeEnv.ifPass = false;
+        }
+      }
+      return result;
+    } else if (blockExpression.startsWith('@else if')) {
+      let result = '';
+      if (!templateScopeEnv.ifPass) {
+        result = 'elseif模块';
+        templateScopeEnv.ifPass = true;
+      }
+      return result;
+    } else if (blockExpression.startsWith('@else')) {
+      let result = '';
+      if (!templateScopeEnv.ifPass) {
+        result = 'else模块';
+      }
+      return result;
+    } else {
+      return this.expressionAnalysis(blockExpression, scopeData);
+    }
+    return blockExpression;
+  }
+  operationExpressionAnalysis(operationExpression, data) {}
+  operate = {
+    add(a, b) {
+      return a + b;
+    },
+    sub(a, b) {
+      return a - b;
+    },
+    mul(a, b) {
+      return a * b;
+    },
+    div(a, b) {
+      return a / b;
+    }
+  };
   bindKeyExpressionAnalysis(bindKeyExpression, data) {
     // console.log(bindKeyExpression);
     bindKeyExpression = bindKeyExpression.trim();
@@ -98,12 +254,26 @@ class MlREngine {
       //纯字符串
       return bindKeyExpression;
     } else {
-      let bindKey = bindKeyExpression;
-      let bindValue = '';
-      if (Object.hasOwnProperty.call(data, bindKey)) {
-        bindValue = data[bindKey];
+      if (bindKeyExpression.indexOf('.') > -1) {
+        let proArr = bindKeyExpression.split('.');
+        let bindValue = '';
+        let scopeData = data;
+        for (let i = 0; i < proArr.length; i++) {
+          const bindKey = proArr[i];
+          if (Object.hasOwnProperty.call(scopeData, bindKey)) {
+            bindValue = scopeData[bindKey];
+            scopeData = bindValue;
+          }
+        }
+        return bindValue;
+      } else {
+        let bindKey = bindKeyExpression;
+        let bindValue = '';
+        if (Object.hasOwnProperty.call(data, bindKey)) {
+          bindValue = data[bindKey];
+        }
+        return bindValue;
       }
-      return bindValue;
     }
   }
   filterExpressionAnalysis(filterExpression) {
