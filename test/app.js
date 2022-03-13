@@ -22,27 +22,27 @@ export default {
   async script() {
     //this.methods.test1();
     console.log('888888', this.$ml);
-    let template = `uuuuuuuuuuu---{{title}}====
-    for:
+    let template = `uuuuuuuuuuu---{{title+'abc'}}====
+    for:0000
     {{@for item1,index in list
        序号：{{index}}--值：{{item1.name}}---
        the age is {{item1.info.age}}
-    }}0000
+    }}
     =======================
      if:===========
      {{@if show==1
-     === {{yesMsg}}
-    }}iiii
+     === {{yesMsg}}{{show==1}}
+    }}
     {{@else if show==2
-     ==== {{noMsg}}
+    ==== {{noMsg}}
     }}
     {{@else
      === {{show}}
-    }}===
+    }}
     ===abc
-   
-   
+
     ====`;
+    //  let template = 'P{{show==1}}';
     let templateData = {
       title: 'hello world!',
       list: [
@@ -56,11 +56,11 @@ export default {
           name: 'item2-name'
         }
       ],
-      show: 1,
+      show: 2,
       yesMsg: 'yes',
       noMsg: 'no'
     };
-    let renderContent = this.$ml.MlR().new().newRender(template, templateData);
+    let renderContent = this.$ml.MlR().new().renderX(template, templateData);
 
     let pre = document.createElement('pre');
     pre.innerText = template;

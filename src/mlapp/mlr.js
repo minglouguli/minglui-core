@@ -19,7 +19,31 @@ class Stack {
 }
 
 class OperationProvider {
-  operators = ['(', ')', '*', '/', '+', '-'];
+  operators = [
+    '(',
+    ')',
+    '!',
+    '*',
+    '/',
+    '+',
+    '-',
+    '==',
+    '!=',
+    '===',
+    '!==',
+    '<',
+    '<=',
+    '>',
+    '>=',
+    '&',
+    '|',
+    '&&',
+    '||',
+    ':',
+    '?',
+    '??',
+    '='
+  ];
   subOperators = ['('];
   subOperatorsObjg = {
     '(': { end: ')' }
@@ -124,6 +148,7 @@ class OperationProvider {
     return stack;
   }
   convertToReversePolish(stringExpression) {
+    // debugger;
     const operators = this.operators;
     const expressionStack = this.getExpressionStack(stringExpression);
     // let stack = new Stack();
@@ -157,6 +182,7 @@ class OperationProvider {
             // 继续寻找栈中较高或相同等级的运算
             let o = stack.pop();
             if (this.operateCompare(expression, o.exp)) {
+              stack.push(o);
               break;
             } else {
               result.push(o);
@@ -243,8 +269,8 @@ class MlR {
   render(template, data) {
     return this.mlREngine.render(template, data);
   }
-  newRender(template, data) {
-    return this.mlREngine.newRender(template, data);
+  renderX(template, data) {
+    return this.mlREngine.renderX(template, data);
   }
 }
 
@@ -309,18 +335,30 @@ class MlREngine {
     });
     return result;
   }
-  newRender(template, data) {
+  renderX(template, data) {
     ////let str = 'age1+1*(12+31)-4';
     //let str = '11+2*34';
     //let str = '11*2+34';
     // let str = '11*(2+34)';
     // let str = '1 + 2 * 3 + 4';
-    let str = '1 + 2 * 3 + (4 * 5 + 6) * 7';
+    // let str = '1 + 2 * 3 + (4 * 5 + 6) * 7';
+    //let str = '1-1?1+1*5:2*(3+1)';
+    //  let str = 'a';
 
     //console.log('xxx', str, this.operationProvider.getExpressionStack(str));
     // console.log('xxx', str, this.operationProvider.convertToReversePolish(str));
-    console.log(str);
-    console.log('xxx', this.reversPolishAnalysis(str, {}));
+    // console.log(str);
+    // console.log(
+    //   'xxx',
+    //   this.reversPolishAnalysis(str, {
+    //     a: 2,
+    //     b: 1,
+    //     c: 3,
+    //     obj: {
+    //       d: 2
+    //     }
+    //   }).exp
+    // );
     return this.templateExpressionAnalysis(template, data);
   }
   templateExpressionAnalysis(template, data) {
@@ -353,6 +391,7 @@ class MlREngine {
         }
         findFlag = true;
         deep++;
+        continue;
       }
       const closeTag = template.substring(i, i + this.#options.closeTag.length);
       if (closeTag == this.#options.closeTag) {
@@ -362,7 +401,7 @@ class MlREngine {
         //找到了结束标志
         closeTagIndex = i;
         findFlag = false;
-        result += this.blockExpressionAnalysis(
+        var br = this.blockExpressionAnalysis(
           template.substring(
             openTagIndex + this.#options.openTag.length,
             closeTagIndex
@@ -370,21 +409,54 @@ class MlREngine {
           scopeData,
           templateScopeEnv
         );
+        if (br.flag) {
+          //整块删除
+          result = this.removeEndNewLine(result);
+        } else {
+          result += br.result;
+        }
       }
     }
     result += template.substring(closeTagIndex + this.#options.closeTag.length);
     return result;
   }
   reversPolishAnalysis(template, data) {
+    //debugger;
     let stack = this.operationProvider.convertToReversePolish(template);
+    //  debugger;
     let result = [];
     for (let index = 0; index < stack.length; index++) {
       const item = stack[index];
       if (item.type === 0) {
-        let p1 = result.pop();
-        let p2 = result.pop();
+        let p1, p2, p3;
 
-        result.push(this.operateExecute(data, item.exp, p1.exp + p2.exp));
+        if (item.exp === '!') {
+          //一元运算
+          p1 = result.pop();
+        } else if (item.exp === '?') {
+          p3 = result.pop();
+          p2 = result.pop();
+          p1 = result.pop();
+        } else if (item.exp === ':') {
+          continue;
+        } else {
+          p2 = result.pop();
+          p1 = result.pop();
+        }
+
+        // debugger;
+        let r = this.operateExecute(
+          data,
+          item.exp,
+          p1.exp,
+          p2 && p2.exp,
+          p3 && p3.exp
+        );
+        // console.log('exe', p1.exp, p2.exp, item.exp, r);
+        result.push({
+          type: 1,
+          exp: r
+        });
       } else if (item.type == 2) {
         result.push(this.reversPolishAnalysis(item.exp, data));
       } else {
@@ -397,14 +469,16 @@ class MlREngine {
     return text;
   }
   blockExpressionAnalysis(blockExpression, scopeData, templateScopeEnv) {
+    let result = '';
+    let flag = false;
     if (blockExpression.startsWith(this.#options.for)) {
-      let result = '';
       let newLineIndex = blockExpression.indexOf(this.#options.newLine);
       if (newLineIndex) {
         let forExpression = blockExpression
           .substring(this.#options.for.length + 1, newLineIndex)
           .trim();
         let forTemplate = blockExpression.substring(newLineIndex + 1);
+        forTemplate = forTemplate.trimEnd();
 
         let listName = 'list';
         let itemName = '';
@@ -418,121 +492,207 @@ class MlREngine {
           itemIndexName = iarr[1].trim().replace(')', '');
         }
         let list = scopeData[listName];
-
-        for (let index = 0; index < list.length; index++) {
-          const item = list[index];
-          let itemData = {};
-          itemName && (itemData[itemName] = item);
-          itemIndexName && (itemData[itemIndexName] = index);
-          result += this.templateExpressionAnalysis(forTemplate, {
-            ...scopeData,
-            ...itemData
-          });
-          if (index < list.length - 1) {
-            result += this.#options.newLine;
+        if (list.length > 0) {
+          for (let index = 0; index < list.length; index++) {
+            const item = list[index];
+            let itemData = {};
+            itemName && (itemData[itemName] = item);
+            itemIndexName && (itemData[itemIndexName] = index);
+            result += this.templateExpressionAnalysis(forTemplate, {
+              ...scopeData,
+              ...itemData
+            });
+            if (index < list.length - 1) {
+              result += this.#options.newLine;
+            }
           }
+        } else {
+          flag = false;
         }
-
-        return result;
       }
-      return result;
     } else if (blockExpression.startsWith(this.#options.if)) {
-      let result = '';
       let newLineIndex = blockExpression.indexOf(this.#options.newLine);
       if (newLineIndex) {
         let ifExpression = blockExpression
           .substring(this.#options.if.length + 1, newLineIndex)
           .trim();
-        let operateResult = this.operationExpressionAnalysis(
+        let operateResult = this.operatorExpressionAnalysis(
           ifExpression,
           scopeData
         );
+
         if (operateResult) {
           templateScopeEnv.ifPass = true;
           let ifTemplate = blockExpression.substring(newLineIndex + 1);
+          ifTemplate = ifTemplate.trimEnd();
           result += this.templateExpressionAnalysis(ifTemplate, scopeData);
         } else {
           templateScopeEnv.ifPass = false;
+          flag = false;
         }
       }
-      return result;
-    } else if (blockExpression.startsWith('@else if')) {
-      let result = '';
+    } else if (blockExpression.startsWith(this.#options.elseIf)) {
       if (!templateScopeEnv.ifPass) {
-        result = 'elseif模块';
-        templateScopeEnv.ifPass = true;
+        let newLineIndex = blockExpression.indexOf(this.#options.newLine);
+        if (newLineIndex) {
+          let ifExpression = blockExpression
+            .substring(this.#options.elseIf.length + 1, newLineIndex)
+            .trim();
+          let operateResult = this.operatorExpressionAnalysis(
+            ifExpression,
+            scopeData
+          );
+
+          if (operateResult) {
+            templateScopeEnv.ifPass = true;
+            let ifTemplate = blockExpression.substring(newLineIndex + 1);
+            ifTemplate = ifTemplate.trimEnd();
+            result += this.templateExpressionAnalysis(ifTemplate, scopeData);
+          } else {
+            templateScopeEnv.ifPass = false;
+          }
+        }
+      } else {
+        flag = true;
       }
-      return result;
     } else if (blockExpression.startsWith('@else')) {
-      let result = '';
       if (!templateScopeEnv.ifPass) {
-        result = 'else模块';
+        let newLineIndex = blockExpression.indexOf(this.#options.newLine);
+        if (newLineIndex) {
+          let ifExpression = blockExpression
+            .substring(this.#options.elseIf.length + 1, newLineIndex)
+            .trim();
+
+          templateScopeEnv.ifPass = true;
+          let ifTemplate = blockExpression.substring(newLineIndex + 1);
+          ifTemplate = ifTemplate.trimEnd();
+          result += this.templateExpressionAnalysis(ifTemplate, scopeData);
+        }
+      } else {
+        flag = true;
       }
-      return result;
     } else {
-      return this.expressionAnalysis(blockExpression, scopeData);
+      result = this.expressionAnalysis(blockExpression, scopeData);
     }
-    return blockExpression;
+
+    return {
+      result: result,
+      flag: flag
+    };
+  }
+  removeEndNewLine(str) {
+    //TODO
+    let chat = str[str.length - 1];
+    while (chat == ' ') {
+      str = str.substring(0, str.length - 1);
+      chat = str[str.length - 1];
+    }
+    let newLine = this.#options.newLine;
+    if (str.length > newLine.length) {
+      if (str[str.length - newLine.length] === newLine) {
+        str = str.substring(0, str.length - newLine.length);
+      }
+    }
+
+    return str;
+  }
+  operatorExpressionAnalysis(operatorExpression, data) {
+    return this.reversPolishAnalysis(operatorExpression, data).exp;
   }
   operateExecute(data, operator, arg1, arg2, arg3) {
     arg1 = this.bindKeyExpressionAnalysis(arg1, data);
     arg2 = this.bindKeyExpressionAnalysis(arg2, data);
-    switch (operator) {
-      case '+':
-        return arg1 + arg2;
+    try {
+      switch (operator) {
+        case '?':
+          return arg1 ? arg2 : arg3;
+        case '!':
+          return !arg1;
+        case '+':
+          return arg1 + arg2;
+        case '-':
+          return arg1 - arg2;
+        case '*':
+          return arg1 * arg2;
+        case '/':
+          return arg1 / arg2;
+        case '===':
+          return arg1 === arg2;
+        case '==':
+          return arg1 == arg2;
+        case '!=':
+          return arg1 != arg2;
+        case '!==':
+          return arg1 !== arg2;
+        case '>':
+          return arg1 > arg2;
+        case '<':
+          return arg1 < arg2;
+        case '>=':
+          return arg1 >= arg2;
+        case '<=':
+          return arg1 <= arg2;
+        case '&&':
+          return arg1 && arg2;
+        case '||':
+          return arg1 || arg2;
+      }
+    } catch (error) {
+      console.error(error, ...arguments);
     }
+
     return '';
   }
-  operationExpressionAnalysis(operationExpression, data) {}
-  operate = {
-    add(a, b) {
-      return a + b;
-    },
-    sub(a, b) {
-      return a - b;
-    },
-    mul(a, b) {
-      return a * b;
-    },
-    div(a, b) {
-      return a / b;
-    }
-  };
   bindKeyExpressionAnalysis(bindKeyExpression, data) {
     // console.log(bindKeyExpression);
-    bindKeyExpression = bindKeyExpression.trim();
+    if (bindKeyExpression === undefined || bindKeyExpression === '') {
+      return '';
+    }
+    if (typeof bindKeyExpression === 'string') {
+      bindKeyExpression = bindKeyExpression.trim();
+      if (bindKeyExpression === 'true') {
+        return true;
+      } else if (bindKeyExpression === 'false') {
+        return false;
+      }
+    } else {
+      return bindKeyExpression;
+    }
+
     let tNumber = Number(bindKeyExpression);
     if (!isNaN(tNumber)) {
       //数字
       return tNumber;
-    } else if (
-      (bindKeyExpression[0] == '"' &&
-        bindKeyExpression[bindKeyExpression.length - 1] == "'") ||
-      (bindKeyExpression[0] == "'" &&
-        bindKeyExpression[bindKeyExpression.length - 1] == "'")
-    ) {
-      //纯字符串
-      return bindKeyExpression;
     } else {
-      if (bindKeyExpression.indexOf('.') > -1) {
-        let proArr = bindKeyExpression.split('.');
-        let bindValue = '';
-        let scopeData = data;
-        for (let i = 0; i < proArr.length; i++) {
-          const bindKey = proArr[i];
-          if (Object.hasOwnProperty.call(scopeData, bindKey)) {
-            bindValue = scopeData[bindKey];
-            scopeData = bindValue;
-          }
-        }
-        return bindValue;
+      if (
+        (bindKeyExpression[0] == '"' &&
+          bindKeyExpression[bindKeyExpression.length - 1] == "'") ||
+        (bindKeyExpression[0] == "'" &&
+          bindKeyExpression[bindKeyExpression.length - 1] == "'")
+      ) {
+        //纯字符串
+        return bindKeyExpression;
       } else {
-        let bindKey = bindKeyExpression;
-        let bindValue = '';
-        if (Object.hasOwnProperty.call(data, bindKey)) {
-          bindValue = data[bindKey];
+        if (bindKeyExpression.indexOf('.') > -1) {
+          let proArr = bindKeyExpression.split('.');
+          let bindValue = '';
+          let scopeData = data;
+          for (let i = 0; i < proArr.length; i++) {
+            const bindKey = proArr[i];
+            if (Object.hasOwnProperty.call(scopeData, bindKey)) {
+              bindValue = scopeData[bindKey];
+              scopeData = bindValue;
+            }
+          }
+          return bindValue;
+        } else {
+          let bindKey = bindKeyExpression;
+          let bindValue = '';
+          if (Object.hasOwnProperty.call(data, bindKey)) {
+            bindValue = data[bindKey];
+          }
+          return bindValue;
         }
-        return bindValue;
       }
     }
   }
@@ -560,12 +720,47 @@ class MlREngine {
     }
   }
   expressionAnalysis(expression, data) {
-    let varr = expression.split('|');
+    let varr = [];
+    let sustr = '';
+    let deep = 0;
+    // debugger;
+    for (let index = 0; index < expression.length; index++) {
+      const element = expression[index];
+      if (element == '|') {
+        if (deep === 0) {
+          deep++;
+          sustr += element;
+        } else {
+          sustr += element;
+          deep = 0;
+        }
+      } else {
+        if (deep === 1) {
+          varr.push(sustr.substring(0, sustr.length - 1));
+          sustr = element;
+          deep = 0;
+        } else {
+          sustr += element;
+          deep = 0;
+        }
+      }
+    }
+    if (sustr) {
+      varr.push(sustr);
+    }
+
+    // varr = expression.split('|');
     let bindValue = '';
     let bindKeyExpression = varr[0];
-    // debugger;
+
     if (bindKeyExpression) {
-      bindValue = this.bindKeyExpressionAnalysis(bindKeyExpression, data);
+      if (bindKeyExpression) {
+        if (/([\+|\-|\*|\/|\(|\)|&|\||?|\=])/.test(bindKeyExpression)) {
+          bindValue = this.operatorExpressionAnalysis(bindKeyExpression, data);
+        } else {
+          bindValue = this.bindKeyExpressionAnalysis(bindKeyExpression, data);
+        }
+      }
       if (varr.length > 1) {
         //存在过滤器
         for (let i = 1; i < varr.length; i++) {
