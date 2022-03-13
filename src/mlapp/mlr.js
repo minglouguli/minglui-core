@@ -1,3 +1,224 @@
+class Stack {
+  constructor() {
+    this.stack = [];
+  }
+
+  push(value) {
+    this.stack.push(value);
+  }
+
+  pop() {
+    return this.stack.pop();
+  }
+  size() {
+    return this.stack.length;
+  }
+  empty() {
+    return this.size() === 0;
+  }
+}
+
+class OperationProvider {
+  operators = ['(', ')', '*', '/', '+', '-'];
+  subOperators = ['('];
+  subOperatorsObjg = {
+    '(': { end: ')' }
+  };
+  isOperator(value) {
+    return this.operators.includes(value);
+  }
+  /**
+   * 比较运算符优先
+   * @param {*} a
+   * @param {*} b
+   * @returns
+   */
+  operateCompare(a, b) {
+    let aIndex = this.operators.indexOf(a) || 0;
+    let bIndex = this.operators.indexOf(b) || 0;
+    return aIndex < bIndex;
+  }
+  getExpressionStack(stringExpression) {
+    let stack = [];
+    let operate = '';
+    let subStack = [];
+    let subExpression = '';
+
+    let isOperator = false;
+    let findOperate = false;
+    let findParam = false;
+    for (let index = 0; index < stringExpression.length; index++) {
+      const chat = stringExpression[index];
+      if (chat === ' ') {
+        continue;
+      }
+      let isOperator = this.isOperator(chat);
+
+      //处理括号子表达式；
+      if (chat === '(') {
+        subStack.push(chat);
+        continue;
+      }
+      if (subStack.length > 0) {
+        if (chat === ')') {
+          subStack.pop();
+          if (subStack.length === 0) {
+            stack.push({
+              type: 2, //子表达式
+              exp: subExpression
+            });
+            subExpression = '';
+          }
+        } else {
+          subExpression += chat;
+        }
+        continue;
+      }
+
+      if (stack.length === 0) {
+        stack.push({
+          type: isOperator ? 0 : 1,
+          exp: chat
+        });
+        continue;
+      }
+      let item = stack.pop();
+
+      if (isOperator) {
+        if (item.type === 0) {
+          let pre = item.exp + chat;
+          //检查是否是一个组合符号，比如!=,+(;
+          //否则推入栈中 [!=,+,(]
+          if (this.isOperator(pre)) {
+            item.exp = pre;
+            stack.push(item);
+            continue;
+          } else {
+            stack.push(item);
+            stack.push({
+              type: 0,
+              exp: chat
+            });
+            continue;
+          }
+        } else {
+          stack.push(item);
+          stack.push({
+            type: 0,
+            exp: chat
+          });
+        }
+      } else {
+        if (item.type === 0) {
+          stack.push(item);
+          stack.push({
+            type: 1,
+            exp: chat
+          });
+        } else {
+          item.exp += chat;
+          stack.push(item);
+        }
+      }
+    }
+    return stack;
+  }
+  convertToReversePolish(stringExpression) {
+    const operators = this.operators;
+    const expressionStack = this.getExpressionStack(stringExpression);
+    // let stack = new Stack();
+    let stack = [];
+    let result = [];
+
+    for (let index = 0; index < expressionStack.length; index++) {
+      const expressionObj = expressionStack[index];
+      const expression = expressionObj.exp;
+      if (expressionObj.type === 0) {
+        // while (true) {
+        if (stack.length === 0) {
+          //第一次加入运算符，
+          stack.push(expressionObj);
+
+          continue;
+          //   break;
+        }
+        //}
+        let op = stack.pop();
+
+        if (this.operateCompare(expression, op.exp)) {
+          //当前运算符优先，则都加入栈中，等待和后续的运算比较
+          stack.push(op);
+          stack.push(expressionObj);
+        } else {
+          //之前的运算符比较高，则之前的运算可以加入运算栈中；
+          result.push(op);
+
+          while (stack.length > 0) {
+            // 继续寻找栈中较高或相同等级的运算
+            let o = stack.pop();
+            if (this.operateCompare(expression, o.exp)) {
+              break;
+            } else {
+              result.push(o);
+            }
+          }
+          //推入当前运算，和后续比较
+          stack.push(expressionObj);
+        }
+      } else {
+        result.push(expressionObj);
+      }
+    }
+    while (stack.length > 0) {
+      let op = stack.pop();
+
+      if (op !== '(') {
+        result.push(op);
+      }
+    }
+    return result;
+
+    // infixExpression.replace(operatorsRex, (_, expression) => {
+    //   if (operators.includes(expression)) {
+    //     while (true) {
+    //       if (stack.empty()) {
+    //         stack.push(expression);
+    //         break;
+    //       }
+
+    //       if (expression === '(') {
+    //         stack.push(expression);
+    //         break;
+    //       }
+
+    //       const op = stack.pop();
+
+    //       if (expression === ')') {
+    //         if (op !== '(') {
+    //           ret.push(op);
+    //           continue;
+    //         }
+    //         break;
+    //       }
+
+    //       if (expression === '(') {
+    //         stack.push(op);
+    //         stack.push(expression);
+    //         break;
+    //       }
+
+    //       if (expression === '+' || expression === '-') {
+    //         if (op !== '+' || op !== '-') {
+    //         }
+    //       }
+    //     }
+    //   } else {
+    //     ret.push(expression);
+    //   }
+    // });
+  }
+}
+
 class MlR {
   mlREngine = null;
   $filters = {};
@@ -59,6 +280,7 @@ class MlREngine {
     this.#mlr = mlr;
     this.#options = { ...{}, ...this.#options, ...config.options };
     this.#filters = config.filters;
+    this.operationProvider = new OperationProvider();
   }
 
   render(template, data) {
@@ -88,6 +310,17 @@ class MlREngine {
     return result;
   }
   newRender(template, data) {
+    ////let str = 'age1+1*(12+31)-4';
+    //let str = '11+2*34';
+    //let str = '11*2+34';
+    // let str = '11*(2+34)';
+    // let str = '1 + 2 * 3 + 4';
+    let str = '1 + 2 * 3 + (4 * 5 + 6) * 7';
+
+    //console.log('xxx', str, this.operationProvider.getExpressionStack(str));
+    // console.log('xxx', str, this.operationProvider.convertToReversePolish(str));
+    console.log(str);
+    console.log('xxx', this.reversPolishAnalysis(str, {}));
     return this.templateExpressionAnalysis(template, data);
   }
   templateExpressionAnalysis(template, data) {
@@ -141,6 +374,24 @@ class MlREngine {
     }
     result += template.substring(closeTagIndex + this.#options.closeTag.length);
     return result;
+  }
+  reversPolishAnalysis(template, data) {
+    let stack = this.operationProvider.convertToReversePolish(template);
+    let result = [];
+    for (let index = 0; index < stack.length; index++) {
+      const item = stack[index];
+      if (item.type === 0) {
+        let p1 = result.pop();
+        let p2 = result.pop();
+
+        result.push(this.operateExecute(data, item.exp, p1.exp + p2.exp));
+      } else if (item.type == 2) {
+        result.push(this.reversPolishAnalysis(item.exp, data));
+      } else {
+        result.push(item);
+      }
+    }
+    return result.pop();
   }
   textAnalysis(text) {
     return text;
@@ -222,6 +473,15 @@ class MlREngine {
       return this.expressionAnalysis(blockExpression, scopeData);
     }
     return blockExpression;
+  }
+  operateExecute(data, operator, arg1, arg2, arg3) {
+    arg1 = this.bindKeyExpressionAnalysis(arg1, data);
+    arg2 = this.bindKeyExpressionAnalysis(arg2, data);
+    switch (operator) {
+      case '+':
+        return arg1 + arg2;
+    }
+    return '';
   }
   operationExpressionAnalysis(operationExpression, data) {}
   operate = {
