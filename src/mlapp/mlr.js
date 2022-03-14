@@ -410,11 +410,12 @@ class MlREngine {
           templateScopeEnv
         );
         if (br.flag) {
+          //表示是块级，需要删去上下占位行
+          // debugger;
           //整块删除
           result = this.removeEndNewLine(result);
-        } else {
-          result += br.result;
         }
+        result += br.result;
       }
     }
     result += template.substring(closeTagIndex + this.#options.closeTag.length);
@@ -472,12 +473,13 @@ class MlREngine {
     let result = '';
     let flag = false;
     if (blockExpression.startsWith(this.#options.for)) {
+      flag = true;
       let newLineIndex = blockExpression.indexOf(this.#options.newLine);
       if (newLineIndex) {
         let forExpression = blockExpression
           .substring(this.#options.for.length + 1, newLineIndex)
           .trim();
-        let forTemplate = blockExpression.substring(newLineIndex + 1);
+        let forTemplate = blockExpression.substring(newLineIndex);
         forTemplate = forTemplate.trimEnd();
 
         let listName = 'list';
@@ -502,15 +504,11 @@ class MlREngine {
               ...scopeData,
               ...itemData
             });
-            if (index < list.length - 1) {
-              result += this.#options.newLine;
-            }
           }
-        } else {
-          flag = false;
         }
       }
     } else if (blockExpression.startsWith(this.#options.if)) {
+      flag = true;
       let newLineIndex = blockExpression.indexOf(this.#options.newLine);
       if (newLineIndex) {
         let ifExpression = blockExpression
@@ -523,15 +521,15 @@ class MlREngine {
 
         if (operateResult) {
           templateScopeEnv.ifPass = true;
-          let ifTemplate = blockExpression.substring(newLineIndex + 1);
+          let ifTemplate = blockExpression.substring(newLineIndex);
           ifTemplate = ifTemplate.trimEnd();
           result += this.templateExpressionAnalysis(ifTemplate, scopeData);
         } else {
           templateScopeEnv.ifPass = false;
-          flag = false;
         }
       }
     } else if (blockExpression.startsWith(this.#options.elseIf)) {
+      flag = true;
       if (!templateScopeEnv.ifPass) {
         let newLineIndex = blockExpression.indexOf(this.#options.newLine);
         if (newLineIndex) {
@@ -545,17 +543,19 @@ class MlREngine {
 
           if (operateResult) {
             templateScopeEnv.ifPass = true;
-            let ifTemplate = blockExpression.substring(newLineIndex + 1);
+            let ifTemplate = blockExpression.substring(newLineIndex);
+
             ifTemplate = ifTemplate.trimEnd();
+
             result += this.templateExpressionAnalysis(ifTemplate, scopeData);
           } else {
             templateScopeEnv.ifPass = false;
           }
         }
       } else {
-        flag = true;
       }
     } else if (blockExpression.startsWith('@else')) {
+      flag = true;
       if (!templateScopeEnv.ifPass) {
         let newLineIndex = blockExpression.indexOf(this.#options.newLine);
         if (newLineIndex) {
@@ -564,12 +564,10 @@ class MlREngine {
             .trim();
 
           templateScopeEnv.ifPass = true;
-          let ifTemplate = blockExpression.substring(newLineIndex + 1);
+          let ifTemplate = blockExpression.substring(newLineIndex);
           ifTemplate = ifTemplate.trimEnd();
           result += this.templateExpressionAnalysis(ifTemplate, scopeData);
         }
-      } else {
-        flag = true;
       }
     } else {
       result = this.expressionAnalysis(blockExpression, scopeData);
@@ -666,12 +664,12 @@ class MlREngine {
     } else {
       if (
         (bindKeyExpression[0] == '"' &&
-          bindKeyExpression[bindKeyExpression.length - 1] == "'") ||
+          bindKeyExpression[bindKeyExpression.length - 1] == '"') ||
         (bindKeyExpression[0] == "'" &&
           bindKeyExpression[bindKeyExpression.length - 1] == "'")
       ) {
         //纯字符串
-        return bindKeyExpression;
+        return bindKeyExpression.substring(1, bindKeyExpression.length - 1);
       } else {
         if (bindKeyExpression.indexOf('.') > -1) {
           let proArr = bindKeyExpression.split('.');

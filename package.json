@@ -1,6 +1,6 @@
 {
   "name": "minglui-core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": false,
   "description": "mingui core tool",
   "main": "./src/index.js",
