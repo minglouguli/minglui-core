@@ -210,7 +210,9 @@ class Go {
             });
           };
         }
-
+        if (!url) {
+          console.error('null url', _);
+        }
         request(url, _conf)
           .then(res => {
             let result = res.data;
@@ -227,19 +229,32 @@ class Go {
                 _.$errorMsg && _.$errorMsg(result.message);
               }
 
+              let mres = {
+                message: result.msg,
+                code: result.code,
+                data: result.data,
+                origin: res
+              };
               let gcr =
                 glEvent.error &&
                 glEvent.error.call(
                   _,
-                  result.msg,
-                  result.code,
-                  result.data,
-                  res
+                  mres.message,
+                  mres.code,
+                  mres.data,
+                  mres.origin,
+                  mres
                 );
 
               if (gcr !== false) {
                 opt.error &&
-                  opt.error.call(_, result.msg, result.code, result.data, res);
+                  opt.error.call(
+                    _,
+                    mres.message,
+                    mres.code,
+                    mres.data,
+                    mres.origin
+                  );
                 e(res);
               }
             } else {
@@ -267,12 +282,32 @@ class Go {
             if (((opt.showMsgType >> 0) & 1) === 1) {
               _.$errorMsg && _.$errorMsg(msg);
             }
-
+            let mres = {
+              message: msg,
+              code: status,
+              data: data,
+              origin: ex
+            };
             let gcr =
-              glEvent.error && glEvent.error.call(_, msg, status, data, ex);
+              glEvent.error &&
+              glEvent.error.call(
+                _,
+                mres.message,
+                mres.code,
+                mres.data,
+                mres.origin,
+                mres
+              );
 
             if (gcr !== false) {
-              opt.error && opt.error.call(_, msg, status, data, ex);
+              opt.error &&
+                opt.error.call(
+                  _,
+                  mres.message,
+                  mres.code,
+                  mres.data,
+                  mres.origin
+                );
               e(ex);
             }
           });
@@ -280,11 +315,26 @@ class Go {
         if (((opt.showMsgType >> 0) & 1) === 1) {
           _.$errorMsg && _.$errorMsg(ex.message);
         }
+        let mres = {
+          message: ex.message,
+          code: 500,
+          data: null,
+          origin: ex
+        };
         let gcr =
-          glEvent.error && glEvent.error.call(_, ex.message, 500, null, ex);
+          glEvent.error &&
+          glEvent.error.call(
+            _,
+            mres.message,
+            mres.code,
+            mres.data,
+            mres.origin,
+            mres
+          );
 
         if (gcr !== false) {
-          opt.error && opt.error.call(_, ex.message, 500, null, ex);
+          opt.error &&
+            opt.error.call(_, mres.message, mres.code, mres.data, mres.origin);
           e(ex);
         }
         console.error(ex);

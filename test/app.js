@@ -22,43 +22,277 @@ export default {
   async script() {
     //this.methods.test1();
     console.log('888888', this.$ml);
-    let template = `uuuuuuuuuuu---{{title+'abc'|todo|at}}====
-    for:0000
-    {{@for item1,index in list
-       序号：{{index}}--值：{{item1.name|todo}}---
-       the age is {{item1.info.age}}
-    }}
-    =======================
-     if:===========
-     {{@if show==1
-     === {{yesMsg}}{{show==1?"aa":'s'|todo}}
-    }}
-    {{@else if show==2
-    ====2 {{noMsg}}
-    }}
-    {{@else
-     ===1 {{show}}
-    }}
-    ===abc
-     ooooo
-    ====`;
+    let template = `
+    <a>\\{\\{ {{name}} \\}\\}</a>
+    <b>{{description}}</b>
+    <b>\\{\\{description\\}\\}</b>
+    <b>{{description}}</b>
+    `;
     //  let template = 'P{{show==1}}';
     let templateData = {
-      title: 'hello world!',
-      list: [
+      name: 'Template',
+      fullName: 'JiuRu.Hdk.DuoKe.Entities.PackageTemplates.Template',
+      description: '礼包模板',
+      group: 'PackageTemplate',
+      isMain: true,
+      nullchat: '?',
+      properties: [
         {
-          name: 'item1-name',
-          info: {
-            age: 1
-          }
+          name: 'Id',
+          typeName: 'long',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '编号',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
         },
         {
-          name: 'item2-name'
+          name: 'Title',
+          typeName: 'string',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '模板标题',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'Subtitle',
+          typeName: 'string',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '副标',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'Width',
+          typeName: 'int',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '宽度',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'Height',
+          typeName: 'int',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '高度',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'ImageFileId',
+          typeName: 'Nullable`1',
+          nullable: true,
+          genericTypeName: 'long',
+          isEnum: false,
+          isGenericType: true,
+          isInterface: false,
+          isVirtual: false,
+          description: '封面图片编号',
+          isFile: true,
+          filePath: 'ImageFilePath',
+          fileTable: 'ImageFile',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'Introduction',
+          typeName: 'string',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '描述',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'OriginalPrice',
+          typeName: 'int',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '原价',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'Price',
+          typeName: 'int',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '售价',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'CreateTime',
+          typeName: 'DateTime',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: false,
+          description: '添加日期',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'ContentTextId',
+          typeName: 'Nullable`1',
+          nullable: true,
+          genericTypeName: 'long',
+          isEnum: false,
+          isGenericType: true,
+          isInterface: false,
+          isVirtual: false,
+          description: '模板富文本编号',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: true,
+          text: 'ContentTextContent',
+          textTable: 'ContentText'
+        },
+        {
+          name: 'DeleteTime',
+          typeName: 'Nullable`1',
+          nullable: true,
+          genericTypeName: 'DateTime',
+          isEnum: false,
+          isGenericType: true,
+          isInterface: false,
+          isVirtual: false,
+          description: '删除时间',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'TemplateTagItems',
+          typeName: 'List`1',
+          nullable: false,
+          genericTypeName: 'TemplateTagItem',
+          isEnum: false,
+          isGenericType: true,
+          isInterface: false,
+          isVirtual: true,
+          description: '模板标签',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'ImageFile',
+          typeName: 'CloudFile',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: true,
+          description: '封面图片',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
+        },
+        {
+          name: 'ContentText',
+          typeName: 'Text',
+          nullable: false,
+          genericTypeName: '',
+          isEnum: false,
+          isGenericType: false,
+          isInterface: false,
+          isVirtual: true,
+          description: '',
+          isFile: false,
+          filePath: '',
+          fileTable: '',
+          isText: false,
+          text: '',
+          textTable: ''
         }
-      ],
-      show: 1,
-      yesMsg: 'yes',
-      noMsg: 'no'
+      ]
     };
     let render = this.$ml.MlR().new();
     render.filter('todo', v => {

@@ -359,7 +359,22 @@ class MlREngine {
     //     }
     //   }).exp
     // );
-    return this.templateExpressionAnalysis(template, data);
+    let begin = '';
+    let end = '';
+    for (let i = 0; i < this.#options.openTag.length; i++) {
+      const element = this.#options.openTag[i];
+      begin += `\\\\${element}`;
+    }
+    for (let i = 0; i < this.#options.closeTag.length; i++) {
+      const element = this.#options.closeTag[i];
+      end += `\\\\${element}`;
+    }
+    let r = this.templateExpressionAnalysis(template, data);
+    let brx = new RegExp(begin, 'g');
+    let erx = new RegExp(end, 'g');
+    return r
+      .replace(brx, this.#options.openTag)
+      .replace(erx, this.#options.closeTag);
   }
   templateExpressionAnalysis(template, data) {
     //模板环境，用于处理嵌套模板
@@ -480,7 +495,16 @@ class MlREngine {
           .substring(this.#options.for.length + 1, newLineIndex)
           .trim();
         let forTemplate = blockExpression.substring(newLineIndex);
-        forTemplate = forTemplate.trimEnd();
+        let si = forTemplate
+          .substring(this.#options.newLine.length)
+          .indexOf(this.#options.newLine);
+        if (si > -1) {
+          let st = forTemplate.substring(0, si);
+          if (st.indexOf('{{@') > -1) {
+            forTemplate = forTemplate.substring(this.#options.newLine.length);
+          }
+        }
+        forTemplate = this.removeEndNewLine(forTemplate);
 
         let listName = 'list';
         let itemName = '';
@@ -522,7 +546,11 @@ class MlREngine {
         if (operateResult) {
           templateScopeEnv.ifPass = true;
           let ifTemplate = blockExpression.substring(newLineIndex);
-          ifTemplate = ifTemplate.trimEnd();
+          console.log('ttt', 'aaa' + ifTemplate + 'ccc');
+          //debugger;
+          ifTemplate = this.removeEndNewLine(ifTemplate);
+          console.log('fff', 'aaa' + ifTemplate + 'ccc');
+
           result += this.templateExpressionAnalysis(ifTemplate, scopeData);
         } else {
           templateScopeEnv.ifPass = false;
@@ -545,7 +573,7 @@ class MlREngine {
             templateScopeEnv.ifPass = true;
             let ifTemplate = blockExpression.substring(newLineIndex);
 
-            ifTemplate = ifTemplate.trimEnd();
+            ifTemplate = this.removeEndNewLine(ifTemplate);
 
             result += this.templateExpressionAnalysis(ifTemplate, scopeData);
           } else {
@@ -565,7 +593,7 @@ class MlREngine {
 
           templateScopeEnv.ifPass = true;
           let ifTemplate = blockExpression.substring(newLineIndex);
-          ifTemplate = ifTemplate.trimEnd();
+          ifTemplate = this.removeEndNewLine(ifTemplate);
           result += this.templateExpressionAnalysis(ifTemplate, scopeData);
         }
       }
@@ -586,7 +614,7 @@ class MlREngine {
       chat = str[str.length - 1];
     }
     let newLine = this.#options.newLine;
-    if (str.length > newLine.length) {
+    if (str.length >= newLine.length) {
       if (str[str.length - newLine.length] === newLine) {
         str = str.substring(0, str.length - newLine.length);
       }
@@ -680,6 +708,9 @@ class MlREngine {
             if (Object.hasOwnProperty.call(scopeData, bindKey)) {
               bindValue = scopeData[bindKey];
               scopeData = bindValue;
+            } else {
+              bindValue = undefined;
+              break;
             }
           }
           return bindValue;
